@@ -17,7 +17,6 @@ jobs:
       - name: Install dependencies
         run: composer install --prefer-dist --no-progress
 
-      # 增加 -vvv 详细模式，强制输出所有检查详情
-      # 使用 --report=full 确保错误列表完整显示
+      # 检查执行：使用 --report=full 输出完整错误报告，使用 --extensions=php 确保只扫描 PHP 文件
       - name: Run PHPCS
-        run: ./vendor/bin/phpcs --standard=phpcs.xml -vvv --report=full .
+        run: ./vendor/bin/phpcs --standard=phpcs.xml --extensions=php --report=full .
