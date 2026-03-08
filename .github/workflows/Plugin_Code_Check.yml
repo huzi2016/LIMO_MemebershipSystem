@@ -16,7 +16,7 @@ jobs:
 
       - name: Install dependencies
         run: composer install --prefer-dist --no-progress
-
-      # 检查执行：使用 --report=full 输出完整错误报告，使用 --extensions=php 确保只扫描 PHP 文件
-      - name: Run PHPCS
-        run: ./vendor/bin/phpcs --standard=phpcs.xml --extensions=php --report=full .
+      
+      - name: Run PHPCS 
+        # 强制扫描所有子目录下的 .php 文件，不再受限于特定文件夹名的大小写
+        run: ./vendor/bin/phpcs --standard=phpcs.xml --extensions=php --report=full ./**/*.php
