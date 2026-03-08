@@ -1,0 +1,10 @@
+<?xml version="1.0"?>
+<ruleset name="WP Plugin Rules">
+    <description>Ruleset for LIMO Membership System</description>
+
+    <file>my-custom-wc-account_15.0.0/</file>
+
+    <rule ref="WordPress-Core"/>
+    <rule ref="WordPress-Extra"/>
+    <rule ref="WordPress-Docs"/>
+</ruleset>
