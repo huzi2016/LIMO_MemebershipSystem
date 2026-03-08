@@ -2,9 +2,13 @@
 <ruleset name="WP Plugin Rules">
     <description>Ruleset for LIMO Membership System</description>
 
-    <file>my-custom-wc-account_15.0.0/</file>
+    <file>.</file>
+
+    <exclude-pattern>*/vendor/*</exclude-pattern>
+    <exclude-pattern>*/Archive/*</exclude-pattern>
 
     <rule ref="WordPress-Core"/>
     <rule ref="WordPress-Extra"/>
     <rule ref="WordPress-Docs"/>
-</ruleset>
+
+    </ruleset>
