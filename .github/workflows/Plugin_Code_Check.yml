@@ -17,6 +17,10 @@ jobs:
       - name: Install dependencies
         run: composer install --prefer-dist --no-progress
 
+      # 1. 先尝试自动修复大部分格式问题
+      - name: Run PHPCBF (Auto Fix)
+        run: ./vendor/bin/phpcbf --standard=phpcs.xml LIMO_MemebershipSystem/ || true
+
+      # 2. 再进行最终的规范检查
       - name: Run PHPCS
-        #test with specific version
-        run: ./vendor/bin/phpcs --standard=phpcs.xml LIMO_MembershipSystem/
+        run: ./vendor/bin/phpcs --standard=phpcs.xml LIMO_MemebershipSystem/
