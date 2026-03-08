@@ -1,0 +1,127 @@
+/**
+ * smp-admin.css
+ * Admin styles for My Custom WC Account
+ * Loaded on: WP Admin – User Edit screen (Points Management panel)
+ *            WP Admin – CustomerAnalytics page
+ *            WP Admin – ShopCredit / Membership Settings page
+ */
+
+/* ── Section 1: Points Management panel (user-edit.php) ─────────────────── */
+#smp-points-section { background: #fff; border: 1px solid #c3c4c7; border-radius: 6px; padding: 0; margin: 25px 0; }
+#smp-points-section .smp-section-head { background: #f6f7f7; border-bottom: 1px solid #c3c4c7; padding: 12px 20px; border-radius: 6px 6px 0 0; display: flex; justify-content: space-between; align-items: center; }
+#smp-points-section .smp-section-head h2 { margin: 0; font-size: 14px; font-weight: 600; color: #1d2327; }
+#smp-points-section .smp-section-body { padding: 20px; }
+
+.smp-pts-balance { font-size: 32px; font-weight: 800; color: #2271b1; line-height: 1; }
+.smp-pts-balance-label { font-size: 12px; color: #888; margin-top: 4px; }
+
+.smp-pts-adj-row { display: flex; gap: 10px; align-items: flex-end; margin-top: 18px; flex-wrap: wrap; }
+.smp-pts-adj-row label { font-size: 12px; font-weight: 600; color: #3c434a; display: block; margin-bottom: 4px; }
+.smp-pts-adj-row input[type="number"] { width: 120px; padding: 7px 10px; border: 1px solid #8c8f94; border-radius: 4px; }
+.smp-pts-adj-row input[type="text"]   { width: 280px; padding: 7px 10px; border: 1px solid #8c8f94; border-radius: 4px; }
+
+.smp-pts-badge { display: inline-block; padding: 2px 8px; border-radius: 3px; font-size: 11px; font-weight: 700; }
+.smp-pts-badge.add    { background: #dcfce7; color: #166534; }
+.smp-pts-badge.deduct { background: #fee2e2; color: #991b1b; }
+.smp-pts-badge.set    { background: #dbeafe; color: #1e40af; }
+.smp-pts-badge.refund { background: #fef3c7; color: #92400e; }
+
+.smp-pts-log-table { width: 100%; border-collapse: collapse; margin-top: 15px; font-size: 13px; }
+.smp-pts-log-table th { background: #f6f7f7; padding: 8px 10px; text-align: left; font-size: 11px; text-transform: uppercase; color: #666; border-bottom: 1px solid #eee; }
+.smp-pts-log-table td { padding: 8px 10px; border-bottom: 1px solid #f0f0f0; color: #3c434a; }
+
+.smp-pts-source { font-size: 11px; color: #2271b1; background: #eff6ff; padding: 2px 6px; border-radius: 3px; }
+
+.smp-adj-notice { padding: 10px 14px; border-radius: 4px; font-size: 13px; font-weight: 600; margin-top: 12px; display: none; }
+.smp-adj-notice.success { background: #dcfce7; color: #166534; border-left: 4px solid #16a34a; display: block; }
+.smp-adj-notice.error   { background: #fee2e2; color: #991b1b; border-left: 4px solid #dc2626; display: block; }
+
+/* WC Points & Rewards active notice */
+.smp-wc-notice { background: #fff8c5; border-left: 4px solid #f5c518; padding: 10px 14px; border-radius: 0 4px 4px 0; font-size: 13px; color: #6b5a00; margin-bottom: 16px; }
+
+/* ── Section 13: CustomerAnalytics page ─────────────────────────────────── */
+#smp-customers-wrap { max-width: 100%; }
+#smp-customers-wrap h1 { margin-bottom: 8px; }
+
+.smp-ca-search { margin: 16px 0; display: flex; gap: 8px; align-items: center; }
+.smp-ca-search input[type=search] { width: 280px; padding: 6px 12px; border: 1px solid #d1d5db; border-radius: 6px; font-size: 14px; }
+
+.smp-ca-table-wrap { width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; border: 1px solid #e2e8f0; border-radius: 10px; background: #fff; }
+.smp-ca-table { width: max-content; min-width: 100%; border-collapse: collapse; font-size: 13.5px; }
+.smp-ca-table th { background: #f8fafc; color: #374151; font-weight: 600; padding: 11px 14px; text-align: left; border-bottom: 2px solid #e2e8f0; white-space: nowrap; }
+.smp-ca-table td { padding: 10px 14px; border-bottom: 1px solid #f1f5f9; vertical-align: middle; white-space: nowrap; }
+.smp-ca-table tr:last-child td { border-bottom: none; }
+.smp-ca-table tr:hover td { background: #f8fafc; }
+
+.smp-badge-pts    { background: #dbeafe; color: #1d4ed8; border-radius: 20px; padding: 2px 10px; font-size: 12px; font-weight: 600; }
+.smp-badge-orders { background: #dcfce7; color: #15803d; border-radius: 20px; padding: 2px 10px; font-size: 12px; font-weight: 600; }
+.smp-badge-zero   { background: #f1f5f9; color: #9ca3af; border-radius: 20px; padding: 2px 10px; font-size: 12px; }
+
+.smp-avatar { border-radius: 50%; vertical-align: middle; margin-right: 8px; }
+
+.smp-ca-pagination { margin-top: 16px; display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+.smp-ca-pagination a,
+.smp-ca-pagination span { padding: 5px 11px; border: 1px solid #d1d5db; border-radius: 6px; font-size: 13px; text-decoration: none; color: #374151; }
+.smp-ca-pagination .current { background: #2563eb; color: #fff; border-color: #2563eb; font-weight: 700; }
+.smp-ca-pagination a:hover { background: #f0f4ff; }
+
+.smp-ca-stat-row { display: flex; gap: 18px; margin: 18px 0; flex-wrap: wrap; }
+.smp-ca-stat { background: #fff; border: 1px solid #e2e8f0; border-radius: 10px; padding: 16px 22px; min-width: 160px; flex: 1; box-shadow: 0 1px 4px rgba(0,0,0,.05); }
+.smp-ca-stat .label { font-size: 12px; color: #9ca3af; text-transform: uppercase; letter-spacing: .5px; }
+.smp-ca-stat .value { font-size: 24px; font-weight: 700; color: #1e293b; margin-top: 4px; }
+
+.smp-aov { color: #7c3aed; font-weight: 600; }
+
+/* ── Section 11: ShopCredit / Membership Settings page ──────────────────── */
+#smp-pts-settings-wrap { max-width: 820px; }
+
+/* Cards */
+.smp-sc { background: #fff; border: 1px solid #e2e8f0; border-radius: 10px; padding: 26px 32px; margin-top: 18px; box-shadow: 0 1px 4px rgba(0,0,0,.06); }
+.smp-sc h2 { margin: 0 0 18px; font-size: 16px; color: #1e293b; border-bottom: 1px solid #f1f5f9; padding-bottom: 12px; }
+
+/* Field row */
+.smp-fg { display: grid; grid-template-columns: 240px 1fr; align-items: center; gap: 10px; padding: 14px 0; border-bottom: 1px solid #f8fafc; }
+.smp-fg:last-child { border-bottom: none; }
+.smp-fl { font-weight: 600; color: #374151; font-size: 13.5px; }
+.smp-fl small { display: block; font-weight: 400; color: #9ca3af; font-size: 12px; margin-top: 3px; line-height: 1.5; }
+.smp-fr { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.smp-fr input[type=number],
+.smp-fr input[type=text] { width: 100px; text-align: right; border-radius: 6px; border: 1px solid #d1d5db; padding: 6px 10px; font-size: 14px; }
+.smp-fr input[type=text] { width: 150px; text-align: left; }
+.smp-unit { color: #374151; font-size: 13.5px; }
+
+/* Config preview / source row */
+.smp-preview { background: #fefce8; border: 1px solid #fde68a; border-radius: 8px; padding: 13px 18px; margin-top: 20px; font-size: 13px; color: #78350f; line-height: 1.7; }
+.smp-preview strong { color: #92400e; }
+.smp-reset { font-size: 12px; color: #ef4444; text-decoration: none; margin-left: 16px; }
+.smp-reset:hover { text-decoration: underline; }
+.smp-source-row { display: flex; align-items: center; gap: 8px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 7px; padding: 9px 16px; font-size: 13px; margin-bottom: 4px; }
+
+/* Tab navigation */
+.smp-tabs-nav { display: flex; border-bottom: 2px solid #e2e8f0; margin: 20px 0 0; }
+.smp-tab-btn { padding: 12px 24px; cursor: pointer; font-size: 14px; font-weight: 600; color: #6b7280; border: none; background: none; border-bottom: 3px solid transparent; margin-bottom: -2px; transition: color .15s, border-color .15s; }
+.smp-tab-btn:hover { color: #2271b1; }
+.smp-tab-btn.active { color: #2271b1; border-bottom-color: #2271b1; }
+.smp-tab-pane { display: none; }
+.smp-tab-pane.active { display: block; }
+
+/* Toggle switch */
+.smp-toggle-wrap { display: flex; align-items: center; gap: 12px; }
+.smp-toggle { position: relative; display: inline-block; width: 44px; height: 24px; flex-shrink: 0; }
+.smp-toggle input { opacity: 0; width: 0; height: 0; }
+.smp-toggle-slider { position: absolute; cursor: pointer; inset: 0; background: #d1d5db; border-radius: 24px; transition: .2s; }
+.smp-toggle-slider:before { content: ""; position: absolute; height: 18px; width: 18px; left: 3px; bottom: 3px; background: #fff; border-radius: 50%; transition: .2s; }
+.smp-toggle input:checked + .smp-toggle-slider { background: #2271b1; }
+.smp-toggle input:checked + .smp-toggle-slider:before { transform: translateX(20px); }
+
+/* Role table */
+.smp-role-table { width: 100%; border-collapse: collapse; margin-top: 6px; }
+.smp-role-table th { text-align: left; font-size: 12px; font-weight: 700; color: #6b7280; text-transform: uppercase; letter-spacing: .05em; padding: 8px 12px; border-bottom: 1px solid #e2e8f0; }
+.smp-role-table td { padding: 10px 12px; border-bottom: 1px solid #f1f5f9; font-size: 13.5px; }
+.smp-role-table tr:last-child td { border-bottom: none; }
+.smp-role-table input[type=number] { width: 100px; text-align: right; border: 1px solid #d1d5db; border-radius: 6px; padding: 5px 10px; font-size: 14px; }
+
+/* Schedule status banner */
+.smp-schedule-banner { border-radius: 8px; padding: 12px 18px; font-size: 13px; line-height: 1.6; margin-top: 0; }
+.smp-schedule-banner.ok   { background: #f0fdf4; border: 1px solid #bbf7d0; color: #166534; }
+.smp-schedule-banner.warn { background: #fefce8; border: 1px solid #fde68a; color: #92400e; }
