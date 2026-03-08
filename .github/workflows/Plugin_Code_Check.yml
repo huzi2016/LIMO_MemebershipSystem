@@ -18,8 +18,8 @@ jobs:
         run: composer install --prefer-dist --no-progress
 
       # 使用点 (.) 扫描当前根目录下所有文件，避免文件夹名称匹配导致的报错
-      - name: Run PHPCBF (Auto Fix)
-        run: ./vendor/bin/phpcbf --standard=phpcs.xml . || true
+      #- name: Run PHPCBF (Auto Fix)
+      #  run: ./vendor/bin/phpcbf --standard=phpcs.xml . || true
 
       - name: Run PHPCS
         run: ./vendor/bin/phpcs --standard=phpcs.xml .
