@@ -99,25 +99,25 @@ if ( ! defined( 'SMP_RECHARGE_ROLES' ) ) {
 class SMP_Error {
 
 	/** Security or nonce check failed. */
-	const SECURITY_FAILED   = 'security_failed';
+	const SECURITY_FAILED = 'security_failed';
 	/** Current user lacks the required capability. */
 	const PERMISSION_DENIED = 'permission_denied';
 	/** Too many requests in a short period. */
-	const RATE_LIMITED      = 'rate_limited';
+	const RATE_LIMITED = 'rate_limited';
 	/** User ID does not correspond to a real account. */
-	const INVALID_USER      = 'invalid_user';
+	const INVALID_USER = 'invalid_user';
 	/** Order ID is missing, zero, or not found. */
-	const INVALID_ORDER     = 'invalid_order';
+	const INVALID_ORDER = 'invalid_order';
 	/** Points amount is out of the accepted range. */
-	const INVALID_AMOUNT    = 'invalid_amount';
+	const INVALID_AMOUNT = 'invalid_amount';
 	/** Action value is not in the allowed whitelist. */
-	const INVALID_ACTION    = 'invalid_action';
+	const INVALID_ACTION = 'invalid_action';
 	/** User does not have enough points for this operation. */
-	const INSUFFICIENT_PTS  = 'insufficient_points';
+	const INSUFFICIENT_PTS = 'insufficient_points';
 	/** A database query failed or returned an unexpected result. */
-	const DB_ERROR          = 'db_error';
+	const DB_ERROR = 'db_error';
 	/** A concurrent lock or unique-constraint conflict was detected. */
-	const CONCURRENCY       = 'concurrency_error';
+	const CONCURRENCY = 'concurrency_error';
 
 	/**
 	 * Send a typed JSON error and terminate execution.
