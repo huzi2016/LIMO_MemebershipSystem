@@ -15,16 +15,6 @@ jobs:
       - name: Install dependencies
         run: composer install --prefer-dist --no-progress
 
-      # 1. 运行自动修复（PHPCBF），并提交修改
-      - name: Run PHPCBF (Auto Fix)
-        run: |
-          ./vendor/bin/phpcbf --standard=phpcs.xml --extensions=php ./**/*.php || true
-          git config --global user.name 'GitHub Action'
-          git config --global user.email 'action@github.com'
-          git add .
-          git commit -m "自动修复：符合WordPress代码规范" || echo "没有需要修复的代码"
-          git push
-
-      # 2. 运行检查（PHPCS）
+      # 只执行检查，不要尝试 git push
       - name: Run PHPCS
         run: ./vendor/bin/phpcs --standard=phpcs.xml --extensions=php --report=full ./**/*.php
