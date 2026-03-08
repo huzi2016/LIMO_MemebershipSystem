@@ -1,5 +1,7 @@
 name: Plugin Code Check
+
 on: [push, pull_request]
+
 jobs:
   phpcs:
     runs-on: ubuntu-latest
@@ -15,6 +17,6 @@ jobs:
       - name: Install dependencies
         run: composer install --prefer-dist --no-progress
 
-      # 只执行检查，不要尝试 git push
+      # 这里是修正后的步骤，确保名称和运行命令缩进正确
       - name: Run PHPCS
-        run: ./vendor/bin/phpcs --standard=phpcs.xml --extensions=php --report=full ./**/*.php
+        run: ./vendor/bin/phpcs --standard=phpcs.xml --extensions=php --ignore=vendor/ .
