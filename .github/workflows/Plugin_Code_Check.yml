@@ -19,4 +19,4 @@ jobs:
 
       - name: Run PHPCS
         #test with specific version
-        run: ./vendor/bin/phpcs --standard=phpcs.xml LIMO-Membership-System/
+        run: ./vendor/bin/phpcs --standard=phpcs.xml LIMO-MembershipSystem/
