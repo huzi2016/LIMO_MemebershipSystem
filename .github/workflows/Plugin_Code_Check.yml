@@ -18,4 +18,5 @@ jobs:
         run: composer install --prefer-dist --no-progress
 
       - name: Run PHPCS
-        run: ./vendor/bin/phpcs --standard=phpcs.xml .
+        #test with specific version
+        run: ./vendor/bin/phpcs --standard=phpcs.xml my-custom-wc-account_15.0.0/
