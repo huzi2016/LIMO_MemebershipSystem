@@ -3044,7 +3044,8 @@ class SMP_Login_Redirect {
 /*
 ==========================================================================
 	BOOTSTRAP — initialise all classes and bind activation / deactivation hooks
-	========================================================================== */
+========================================================================== 
+*/
 
 SMP_Member_ID::init();
 SMP_Admin_Points_Field::init();
