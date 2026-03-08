@@ -17,10 +17,9 @@ jobs:
       - name: Install dependencies
         run: composer install --prefer-dist --no-progress
 
-      # 1. 先尝试自动修复大部分格式问题
+      # 使用点 (.) 扫描当前根目录下所有文件，避免文件夹名称匹配导致的报错
       - name: Run PHPCBF (Auto Fix)
-        run: ./vendor/bin/phpcbf --standard=phpcs.xml LIMO_MemebershipSystem/ || true
+        run: ./vendor/bin/phpcbf --standard=phpcs.xml . || true
 
-      # 2. 再进行最终的规范检查
       - name: Run PHPCS
-        run: ./vendor/bin/phpcs --standard=phpcs.xml LIMO_MemebershipSystem/
+        run: ./vendor/bin/phpcs --standard=phpcs.xml .
