@@ -89,17 +89,34 @@ if ( ! defined( 'SMP_RECHARGE_ROLES' ) ) {
 	always receives a consistent { success: false, data: { code, msg } } envelope.
 	========================================================================== */
 
+/**
+ * Centralised, typed JSON error responses.
+ *
+ * All AJAX handlers call SMP_Error::send() instead of wp_die() so the client
+ * always receives a consistent { success: false, data: { code, msg } } envelope.
+ * Error codes are defined as class constants for use in both PHP and the JS layer.
+ */
 class SMP_Error {
 
+	/** Security or nonce check failed. */
 	const SECURITY_FAILED   = 'security_failed';
+	/** Current user lacks the required capability. */
 	const PERMISSION_DENIED = 'permission_denied';
+	/** Too many requests in a short period. */
 	const RATE_LIMITED      = 'rate_limited';
+	/** User ID does not correspond to a real account. */
 	const INVALID_USER      = 'invalid_user';
+	/** Order ID is missing, zero, or not found. */
 	const INVALID_ORDER     = 'invalid_order';
+	/** Points amount is out of the accepted range. */
 	const INVALID_AMOUNT    = 'invalid_amount';
+	/** Action value is not in the allowed whitelist. */
 	const INVALID_ACTION    = 'invalid_action';
+	/** User does not have enough points for this operation. */
 	const INSUFFICIENT_PTS  = 'insufficient_points';
+	/** A database query failed or returned an unexpected result. */
 	const DB_ERROR          = 'db_error';
+	/** A concurrent lock or unique-constraint conflict was detected. */
 	const CONCURRENCY       = 'concurrency_error';
 
 	/**
@@ -136,8 +153,24 @@ class SMP_Error {
 	Core points CRUD. Pure data logic — no hooks registered here.
 	========================================================================== */
 
+/**
+ * Core points CRUD engine.
+ *
+ * Pure data-access logic — no WordPress hooks are registered here.
+ * Delegates to WC_Points_Rewards_Manager when that plugin is active;
+ * otherwise operates directly on the smp_points user-meta row.
+ */
 class SMP_Points_Engine {
 
+	/**
+	 * Retrieve the current points balance for a user.
+	 *
+	 * Delegates to WC_Points_Rewards_Manager when active; otherwise reads
+	 * the smp_points user-meta (may be served from object cache).
+	 *
+	 * @param int|null $user_id WordPress user ID. Defaults to the current user.
+	 * @return int Current points balance.
+	 */
 	public static function get_user_points( $user_id = null ) {
 		if ( ! $user_id ) {
 			$user_id = get_current_user_id();
@@ -148,6 +181,15 @@ class SMP_Points_Engine {
 		return (int) get_user_meta( $user_id, 'smp_points', true );
 	}
 
+	/**
+	 * Read the current points balance directly from the database.
+	 *
+	 * Bypasses the object cache to obtain an authoritative value immediately
+	 * after a write. Delegates to WC_Points_Rewards_Manager when active.
+	 *
+	 * @param int|null $user_id WordPress user ID. Defaults to the current user.
+	 * @return int Current points balance.
+	 */
 	public static function get_user_points_from_db( $user_id = null ) {
 		if ( ! $user_id ) {
 			$user_id = get_current_user_id();
@@ -166,6 +208,18 @@ class SMP_Points_Engine {
 		return (int) $val;
 	}
 
+	/**
+	 * Atomically deduct points from a user's balance.
+	 *
+	 * Uses a single UPDATE with an inline WHERE guard so the balance cannot
+	 * go below zero even under concurrent requests. Returns false without
+	 * modifying the database if the balance is insufficient.
+	 *
+	 * @param int      $user_id  Target WordPress user ID.
+	 * @param int      $points   Number of points to deduct.
+	 * @param int|null $order_id Optional order ID to include in the audit log.
+	 * @return bool True on success, false if insufficient balance or DB error.
+	 */
 	public static function deduct_user_points( $user_id, $points, $order_id = null ) {
 		if ( class_exists( 'WC_Points_Rewards_Manager' ) ) {
 			$current = (int) WC_Points_Rewards_Manager::get_users_points( $user_id );
@@ -226,6 +280,17 @@ class SMP_Points_Engine {
 		return ( $rows > 0 );
 	}
 
+	/**
+	 * Atomically add points to a user's balance.
+	 *
+	 * Tries an UPDATE first. If no row exists, inserts via add_user_meta()
+	 * with $unique = true; a concurrent-insert guard retries the UPDATE on failure.
+	 *
+	 * @param int    $user_id WordPress user ID.
+	 * @param int    $points  Number of points to add.
+	 * @param string $note    Optional human-readable note for the log.
+	 * @return bool True on success, false on DB error.
+	 */
 	public static function add_user_points( $user_id, $points, $note = '' ) {
 		if ( class_exists( 'WC_Points_Rewards_Manager' ) ) {
 			WC_Points_Rewards_Manager::increase_points( $user_id, $points, 'admin-adjustment', $note ?: 'Manual adjustment by admin' );
@@ -260,7 +325,7 @@ class SMP_Points_Engine {
 			return false;
 		}
 
-		if ( $rows === 0 ) {
+		if ( 0 === $rows ) {
 			// No existing row — try a unique INSERT
 			$inserted = add_user_meta( $user_id, 'smp_points', (int) $points, true );
 			if ( ! $inserted ) {
@@ -289,6 +354,14 @@ class SMP_Points_Engine {
 		return true;
 	}
 
+	/**
+	 * Return the active points configuration.
+	 *
+	 * Priority: (1) custom smp_pts_config option, (2) WC Points & Rewards
+	 * plugin settings, (3) built-in defaults.
+	 *
+	 * @return array{earn_rate: float, redeem_rate: float, max_discount_pct: float, min_redeem: int, label: string}
+	 */
 	public static function get_points_config() {
 		$defaults = array(
 			'earn_rate'        => 1,
@@ -311,7 +384,7 @@ class SMP_Points_Engine {
 				if ( isset( $options['redeem_points_per_dollar'] ) ) {
 					$config['redeem_rate'] = (float) $options['redeem_points_per_dollar'];
 				}
-				if ( isset( $options['max_discount'] ) && $options['max_discount'] !== '' ) {
+				if ( isset( $options['max_discount'] ) && '' !== $options['max_discount'] ) {
 																		$config['max_discount_pct'] = (float) $options['max_discount'];
 				}
 				if ( isset( $options['minimum_points_amount'] ) ) {
@@ -326,6 +399,16 @@ class SMP_Points_Engine {
 		return $defaults;
 	}
 
+	/**
+	 * Calculate the maximum discount a user may apply on the current cart.
+	 *
+	 * Returns the lesser of (a) the monetary value of all the user's points
+	 * and (b) the configured percentage cap applied to the cart subtotal.
+	 *
+	 * @param int   $user_points Current points balance of the user.
+	 * @param float $cart_total  Cart subtotal in the store currency.
+	 * @return float Maximum discount amount, rounded to two decimal places.
+	 */
 	public static function calc_max_discount( $user_points, $cart_total ) {
 		$cfg           = self::get_points_config();
 		$max_by_points = floor( $user_points / $cfg['redeem_rate'] * 100 ) / 100;
@@ -333,6 +416,17 @@ class SMP_Points_Engine {
 		return min( $max_by_points, $max_by_order );
 	}
 
+	/**
+	 * Refund the redeemed points for a cancelled or refunded order.
+	 *
+	 * Acquires a MySQL advisory lock scoped to the order ID to prevent
+	 * two concurrent webhooks from both passing the "already refunded?"
+	 * guard and issuing a double credit.
+	 *
+	 * @param int    $order_id WooCommerce order ID.
+	 * @param string $reason   Human-readable reason written to the points log.
+	 * @return bool True when points were successfully refunded, false otherwise.
+	 */
 	public static function refund_points_for_order( $order_id, $reason = '' ) {
 		$order = wc_get_order( $order_id );
 		if ( ! $order ) {
@@ -356,7 +450,7 @@ class SMP_Points_Engine {
 		$lock_name   = 'smp_refund_' . (int) $order_id;
 		$lock_result = $wpdb->get_var( $wpdb->prepare( 'SELECT GET_LOCK(%s, 5)', $lock_name ) );
 
-		if ( $lock_result !== '1' ) {
+		if ( '1' !== $lock_result ) {
 			SMP_Error::log( 'SMP_REFUND_LOCK', "order={$order_id} — could not acquire lock (result={$lock_result})" );
 			return false;
 		}
@@ -398,7 +492,15 @@ class SMP_Points_Engine {
 	}
 
 	/**
-	 * Appends one entry to a user's smp_points_log, keeping only the last 100 records.
+	 * Append one entry to a user's points log, keeping only the last 100 records.
+	 *
+	 * @param int    $user_id       Target user ID.
+	 * @param string $action        Action type: 'add', 'deduct', or 'set'.
+	 * @param int    $amount        Number of points affected.
+	 * @param int    $balance_after Points balance recorded after this operation.
+	 * @param string $note          Human-readable description.
+	 * @param string $by            Actor identifier (e.g. user_login or 'system').
+	 * @return void
 	 */
 	public static function append_log( $user_id, $action, $amount, $balance_after, $note, $by ) {
 		$log = get_user_meta( $user_id, 'smp_points_log', true );
@@ -423,10 +525,27 @@ class SMP_Points_Engine {
 	Membership-number assignment, display, and admin columns.
 	========================================================================== */
 
+/**
+ * Membership-number assignment, display, and admin columns.
+ *
+ * Generates a sequential, prefixed member ID (e.g. MBR000042) for every
+ * registered user and exposes it in the WP admin user-list and on the
+ * WooCommerce account page.
+ */
 class SMP_Member_ID {
 
+	/**
+	 * Cached member-number configuration array.
+	 *
+	 * @var array|null
+	 */
 	private static $config_cache = null;
 
+	/**
+	 * Register all WordPress hooks for the membership-number system.
+	 *
+	 * @return void
+	 */
 	public static function init() {
 		add_action( 'user_register', array( __CLASS__, 'assign' ) );
 		add_action( 'wp_login', array( __CLASS__, 'on_login' ), 10, 2 );
@@ -440,8 +559,13 @@ class SMP_Member_ID {
 		add_action( 'pre_get_users', array( __CLASS__, 'handle_sort' ) );
 	}
 
+	/**
+	 * Return the validated member-number configuration, with in-memory caching.
+	 *
+	 * @return array{prefix: string, num_length: int}
+	 */
 	public static function get_config() {
-		if ( self::$config_cache !== null ) {
+		if ( null !== self::$config_cache ) {
 			return self::$config_cache;
 		}
 		$saved               = get_option( 'smp_member_num_config', array() );
@@ -458,6 +582,15 @@ class SMP_Member_ID {
 		return self::$config_cache;
 	}
 
+	/**
+	 * Assign a new sequential member ID to a user if one does not yet exist.
+	 *
+	 * Uses MySQL LAST_INSERT_ID() for an atomic auto-increment on the
+	 * smp_member_num_counter option, avoiding race conditions on concurrent logins.
+	 *
+	 * @param int $user_id WordPress user ID to assign a member ID to.
+	 * @return string|false The assigned member ID string, or false on failure.
+	 */
 	public static function assign( $user_id ) {
 		$user_id = (int) $user_id;
 		if ( $user_id <= 0 ) {
@@ -489,6 +622,12 @@ class SMP_Member_ID {
 		return $member_id;
 	}
 
+	/**
+	 * Get the member ID for a user, assigning one on-the-fly if needed.
+	 *
+	 * @param int $user_id WordPress user ID. Defaults to the current user.
+	 * @return string Member ID string, or empty string if the user is not logged in.
+	 */
 	public static function get( $user_id = 0 ) {
 		if ( ! $user_id ) {
 			$user_id = get_current_user_id();
@@ -503,14 +642,37 @@ class SMP_Member_ID {
 		return (string) self::assign( $user_id );
 	}
 
+	/**
+	 * Return the member ID for the currently authenticated user.
+	 *
+	 * Callback for the smp_dashboard_member_id filter.
+	 *
+	 * @return string Member ID string, or empty string if not logged in.
+	 */
 	public static function get_current() {
 		return self::get();
 	}
 
+	/**
+	 * Ensure a member ID is assigned whenever a user logs in.
+	 *
+	 * Hooked to wp_login (priority 10). Calls assign(), which is a no-op when
+	 * the user already has a member ID.
+	 *
+	 * @param string  $user_login The user's login name (unused).
+	 * @param WP_User $user       The WP_User object of the authenticating user.
+	 * @return void
+	 */
 	public static function on_login( $user_login, $user ) {
 		self::assign( $user->ID );
 	}
 
+	/**
+	 * Render the read-only member ID field on the WP admin user-edit screen.
+	 *
+	 * @param WP_User $user The user object for the profile being viewed.
+	 * @return void
+	 */
 	public static function render_admin_field( $user ) {
 		if ( ! current_user_can( 'manage_options' ) ) {
 			return;
@@ -542,6 +704,13 @@ class SMP_Member_ID {
 		<?php
 	}
 
+	/**
+	 * Render the member ID and points balance cards on the WooCommerce account page.
+	 *
+	 * Hooked to woocommerce_edit_account_form_start.
+	 *
+	 * @return void
+	 */
 	public static function render_account_cards() {
 		if ( ! is_user_logged_in() ) {
 			return;
@@ -615,11 +784,17 @@ class SMP_Member_ID {
 		<?php
 	}
 
+	/**
+	 * Inject Member ID and Points columns into the WP Users list table.
+	 *
+	 * @param array $columns Existing column definitions.
+	 * @return array Modified column definitions with the new columns inserted after Email.
+	 */
 	public static function add_columns( $columns ) {
 		$new = array();
 		foreach ( $columns as $key => $label ) {
 			$new[ $key ] = $label;
-			if ( $key === 'email' ) {
+			if ( 'email' === $key ) {
 				$new['smp_member_id'] = '🪪 Member ID';
 				$new['smp_points']    = '⭐ Points';
 			}
@@ -627,15 +802,23 @@ class SMP_Member_ID {
 		return $new;
 	}
 
+	/**
+	 * Render the cell content for the custom Member ID and Points columns.
+	 *
+	 * @param string $output      Default column output (passed through for unknown columns).
+	 * @param string $column_name Slug of the column being rendered.
+	 * @param int    $user_id     ID of the user for the current row.
+	 * @return string HTML content for the cell.
+	 */
 	public static function render_column( $output, $column_name, $user_id ) {
-		if ( $column_name === 'smp_member_id' ) {
+		if ( 'smp_member_id' === $column_name ) {
 			$mid = get_user_meta( $user_id, 'smp_member_id', true );
 			if ( ! $mid ) {
 				return '<span style="color:#aaa;">—</span>';
 			}
 			return '<code style="font-size:13px;letter-spacing:1.5px;background:#f1f5f9;padding:3px 8px;border-radius:4px;font-family:monospace;">' . esc_html( $mid ) . '</code>';
 		}
-		if ( $column_name === 'smp_points' ) {
+		if ( 'smp_points' === $column_name ) {
 			$pts = SMP_Points_Engine::get_user_points( $user_id );
 			if ( $pts <= 0 ) {
 				return '<span style="color:#aaa;">0</span>';
@@ -646,21 +829,33 @@ class SMP_Member_ID {
 		return $output;
 	}
 
+	/**
+	 * Register the custom columns as sortable in the WP Users list table.
+	 *
+	 * @param array $columns Existing sortable column definitions.
+	 * @return array Modified definitions including smp_member_id and smp_points.
+	 */
 	public static function sortable_columns( $columns ) {
 		$columns['smp_member_id'] = 'smp_member_id';
 		$columns['smp_points']    = 'smp_points';
 		return $columns;
 	}
 
+	/**
+	 * Apply meta-value sorting when the custom user-list columns are selected.
+	 *
+	 * @param WP_User_Query $query The current user query object, modified in-place.
+	 * @return void
+	 */
 	public static function handle_sort( $query ) {
 		if ( ! is_admin() ) {
 			return;
 		}
 		$orderby = $query->get( 'orderby' );
-		if ( $orderby === 'smp_member_id' ) {
+		if ( 'smp_member_id' === $orderby ) {
 			$query->set( 'meta_key', 'smp_member_id' );
 			$query->set( 'orderby', 'meta_value_num' ); }
-		if ( $orderby === 'smp_points' ) {
+		if ( 'smp_points' === $orderby ) {
 			$query->set( 'meta_key', 'smp_points' );
 			$query->set( 'orderby', 'meta_value_num' ); }
 	}
@@ -672,14 +867,35 @@ class SMP_Member_ID {
 	WP admin user-profile points management UI + AJAX handler.
 	========================================================================== */
 
+/**
+ * WP admin user-profile points management UI and AJAX handler.
+ *
+ * Adds a dedicated "Points Management" panel to the user-edit screen that
+ * allows administrators to add, deduct, or set an exact points balance
+ * and view the last 10 adjustment log entries.
+ */
 class SMP_Admin_Points_Field {
 
+	/**
+	 * Register WordPress hooks for the admin points management UI.
+	 *
+	 * @return void
+	 */
 	public static function init() {
 		add_action( 'show_user_profile', array( __CLASS__, 'render_field' ) );
 		add_action( 'edit_user_profile', array( __CLASS__, 'render_field' ) );
 		add_action( 'wp_ajax_smp_admin_adjust_points', array( __CLASS__, 'ajax_adjust_points' ) );
 	}
 
+	/**
+	 * Render the "Points Management" panel on the WP admin user-edit screen.
+	 *
+	 * Displays the live balance, an adjustment form (add / deduct / set), and
+	 * the last 10 log entries. Restricted to administrators.
+	 *
+	 * @param WP_User $user The user object for the profile being edited.
+	 * @return void
+	 */
 	public static function render_field( $user ) {
 		if ( ! current_user_can( 'manage_options' ) ) {
 			return;
@@ -768,8 +984,8 @@ class SMP_Admin_Points_Field {
 								<tr>
 									<td><?php echo esc_html( $entry['date'] ); ?></td>
 									<td><span class="smp-pts-badge <?php echo esc_attr( $entry['action'] ); ?>"><?php echo esc_html( ucfirst( $entry['action'] ) ); ?></span></td>
-									<td style="font-weight:700;color:<?php echo $entry['action'] === 'deduct' ? '#dc2626' : '#16a34a'; ?>">
-										<?php echo $entry['action'] === 'deduct' ? '-' : '+'; ?><?php echo esc_html( number_format( $entry['amount'] ) ); ?>
+									<td style="font-weight:700;color:<?php echo esc_attr( 'deduct' === $entry['action'] ? '#dc2626' : '#16a34a' ); ?>">
+										<?php echo 'deduct' === $entry['action'] ? '-' : '+'; ?><?php echo esc_html( number_format( $entry['amount'] ) ); ?>
 									</td>
 									<td><?php echo esc_html( number_format( $entry['balance_after'] ) ); ?></td>
 									<td style="color:#666;"><?php echo esc_html( $entry['note'] ); ?></td>
@@ -786,6 +1002,15 @@ class SMP_Admin_Points_Field {
 		<?php
 	}
 
+	/**
+	 * AJAX handler: apply an admin points adjustment (add / deduct / set).
+	 *
+	 * Validates nonce, capability, rate limit, user, amount, and action whitelist
+	 * before touching the database. Returns the updated balance on success or a
+	 * typed JSON error via SMP_Error::send() on failure.
+	 *
+	 * @return void Terminates with wp_send_json_success() or SMP_Error::send().
+	 */
 	public static function ajax_adjust_points() {
 		$user_id = intval( $_POST['user_id'] ?? 0 );
 
@@ -838,16 +1063,16 @@ class SMP_Admin_Points_Field {
 		$msg         = '';
 		$ok          = true;
 
-		if ( $action === 'add' ) {
+		if ( 'add' === $action ) {
 			$ok  = SMP_Points_Engine::add_user_points( $user_id, $amount, $note ?: 'Manual addition by admin' );
 			$msg = $amount . ' points added';
 
-		} elseif ( $action === 'deduct' ) {
+		} elseif ( 'deduct' === $action ) {
 			$amount = min( $amount, $current_pts );
 			$ok     = SMP_Points_Engine::deduct_user_points( $user_id, $amount );
 			$msg    = $amount . ' points deducted';
 
-		} elseif ( $action === 'set' ) {
+		} elseif ( 'set' === $action ) {
 			$delta = $amount - $current_pts;
 			if ( $delta > 0 ) {
 				$ok = SMP_Points_Engine::add_user_points( $user_id, $delta, $note ?: 'Balance set by admin' );
@@ -882,8 +1107,20 @@ class SMP_Admin_Points_Field {
 	wp_enqueue_scripts and admin_enqueue_scripts management.
 	========================================================================== */
 
+/**
+ * Script and style enqueue management.
+ *
+ * Handles wp_enqueue_scripts (frontend account + checkout) and
+ * admin_enqueue_scripts (user-edit + settings pages), and passes
+ * runtime PHP values to JavaScript via wp_localize_script().
+ */
 class SMP_Assets {
 
+	/**
+	 * Register all WordPress script and style enqueue hooks.
+	 *
+	 * @return void
+	 */
 	public static function init() {
 		add_action( 'wp_enqueue_scripts', array( __CLASS__, 'enqueue_frontend' ) );
 		add_action( 'wp_enqueue_scripts', array( __CLASS__, 'enqueue_global_css' ), 20 );
@@ -891,6 +1128,15 @@ class SMP_Assets {
 		add_action( 'wp', array( __CLASS__, 'maybe_load_for_shortcodes' ) );
 	}
 
+	/**
+	 * Enqueue frontend scripts and styles on the account and checkout pages.
+	 *
+	 * Passes runtime data (AJAX URL, nonces, points limits) to JavaScript via
+	 * wp_localize_script(). The smp_load_scripts filter lets themes force-enable
+	 * or disable loading.
+	 *
+	 * @return void
+	 */
 	public static function enqueue_frontend() {
 		$on_account  = function_exists( 'is_account_page' ) && is_account_page();
 		$on_checkout = function_exists( 'is_checkout' ) && is_checkout();
@@ -956,6 +1202,13 @@ class SMP_Assets {
 		);
 	}
 
+	/**
+	 * Enqueue the frontend stylesheet on non-admin pages that may render shortcodes.
+	 *
+	 * Covers the front page, shop, cart, checkout, and all static pages.
+	 *
+	 * @return void
+	 */
 	public static function enqueue_global_css() {
 		if ( is_admin() ) {
 			return;
@@ -971,6 +1224,12 @@ class SMP_Assets {
 		wp_enqueue_style( 'smp-frontend', SMP_PLUGIN_URL . 'assets/css/smp-frontend.css', array(), SMP_VERSION );
 	}
 
+	/**
+	 * Enqueue admin scripts and styles on user-edit and plugin settings screens.
+	 *
+	 * @param string $hook The current admin page hook suffix.
+	 * @return void
+	 */
 	public static function enqueue_admin( $hook ) {
 		$admin_pages  = array( 'profile.php', 'user-edit.php' );
 		$our_pages    = array( 'smp-customer-analytics', 'smp-points-settings' );
@@ -1015,6 +1274,15 @@ class SMP_Assets {
 		);
 	}
 
+	/**
+	 * Force-enable frontend asset loading when a plugin shortcode is present.
+	 *
+	 * Hooked to wp (after the global $post is available). Adds the
+	 * smp_load_scripts filter callback when [smp_auth] or [order_lookup]
+	 * is found in the current post's content.
+	 *
+	 * @return void
+	 */
 	public static function maybe_load_for_shortcodes() {
 		global $post;
 		if ( ! $post instanceof WP_Post ) {
@@ -1027,7 +1295,12 @@ class SMP_Assets {
 	}
 
 	/**
-	 * Shared helper: returns the current WC cart subtotal, with fallbacks.
+	 * Return the current WooCommerce cart subtotal, with layered fallbacks.
+	 *
+	 * Tries get_subtotal(), then get_cart_contents_total(), then iterates
+	 * line items to ensure a non-zero value during partial cart-calculation cycles.
+	 *
+	 * @return float Cart subtotal in the store's base currency.
 	 */
 	public static function get_cart_total() {
 		$cart_total = 0;
@@ -1052,13 +1325,34 @@ class SMP_Assets {
 	AJAX handlers for the order-detail panel and inline status updates.
 	========================================================================== */
 
+/**
+ * AJAX handlers for the order-detail panel and inline status updates.
+ *
+ * Serves the tabbed order dashboard shortcode: one handler returns an HTML
+ * snapshot of admin-style order details wrapped in a JSON envelope; the
+ * other applies an inline status change and returns the new status label.
+ */
 class SMP_Order_Ajax {
 
+	/**
+	 * Register AJAX action hooks for order details and status updates.
+	 *
+	 * @return void
+	 */
 	public static function init() {
 		add_action( 'wp_ajax_smp_get_admin_details', array( __CLASS__, 'ajax_get_admin_details' ) );
 		add_action( 'wp_ajax_smp_ajax_update_status', array( __CLASS__, 'ajax_update_status' ) );
 	}
 
+	/**
+	 * AJAX handler: return admin-style order details as an HTML snippet.
+	 *
+	 * Verifies the nonce, validates the order ID, checks ownership or admin
+	 * capability, then renders the detail view into an output buffer and returns
+	 * it wrapped in a JSON success envelope.
+	 *
+	 * @return void Terminates with wp_send_json_success() or SMP_Error::send().
+	 */
 	public static function ajax_get_admin_details() {
 		if ( ! check_ajax_referer( 'smp_detail_nonce', 'nonce', false ) ) {
 			SMP_Error::send( SMP_Error::SECURITY_FAILED, 'Security check failed. Please refresh and try again.', 403 );
@@ -1192,6 +1486,14 @@ class SMP_Order_Ajax {
 		wp_send_json_success( array( 'html' => $html ) );
 	}
 
+	/**
+	 * AJAX handler: update the status of a WooCommerce order.
+	 *
+	 * Requires manage_options capability and a valid nonce. The new status is
+	 * validated against the list returned by wc_get_order_statuses().
+	 *
+	 * @return void Terminates with wp_send_json_success() or SMP_Error::send().
+	 */
 	public static function ajax_update_status() {
 		if ( ! check_ajax_referer( 'smp_order_nonce', 'nonce', false ) ) {
 			SMP_Error::send( SMP_Error::SECURITY_FAILED, 'Security check failed.', 403 );
@@ -1223,10 +1525,27 @@ class SMP_Order_Ajax {
 	Checkout redemption panel, cart fees, order processing, and refunds.
 	========================================================================== */
 
+/**
+ * Checkout redemption panel, cart fees, order processing, and refunds.
+ *
+ * Renders the points-redemption widget on the checkout page, handles the
+ * AJAX apply/clear actions, adds a WooCommerce cart fee for the discount,
+ * deducts points when an order is placed, and refunds them on cancellation.
+ */
 class SMP_Checkout_Points {
 
+	/**
+	 * Prevents the checkout redemption panel from rendering more than once per request.
+	 *
+	 * @var bool
+	 */
 	private static $rendered = false;
 
+	/**
+	 * Register all WooCommerce hooks for the checkout points flow.
+	 *
+	 * @return void
+	 */
 	public static function init() {
 		add_action( 'woocommerce_before_checkout_form', array( __CLASS__, 'render_panel_early' ), 5 );
 		add_action( 'wp_footer', array( __CLASS__, 'render_panel_late' ), 5 );
@@ -1238,10 +1557,22 @@ class SMP_Checkout_Points {
 		add_action( 'woocommerce_order_status_changed', array( __CLASS__, 'order_status_changed' ), 10, 3 );
 	}
 
+	/**
+	 * Render the points redemption panel via the woocommerce_before_checkout_form hook.
+	 *
+	 * @return void
+	 */
 	public static function render_panel_early() {
 		self::render_panel( false );
 	}
 
+	/**
+	 * Render the points panel via wp_footer as a JS-injected fallback.
+	 *
+	 * Used when the active theme does not fire woocommerce_before_checkout_form.
+	 *
+	 * @return void
+	 */
 	public static function render_panel_late() {
 		if ( ! function_exists( 'is_checkout' ) || ! is_checkout() ) {
 			return;
@@ -1249,6 +1580,16 @@ class SMP_Checkout_Points {
 		self::render_panel( true );
 	}
 
+	/**
+	 * Output the points redemption panel HTML and inline runtime script.
+	 *
+	 * The panel is rendered at most once per request (guarded by $rendered).
+	 * When $inject_via_js is true the panel is hidden by default and the JS
+	 * layer moves it inside the checkout form after page load.
+	 *
+	 * @param bool $inject_via_js Whether to hide the panel for JS-side injection.
+	 * @return void
+	 */
 	public static function render_panel( $inject_via_js = false ) {
 		if ( self::$rendered ) {
 			return;
@@ -1353,6 +1694,11 @@ class SMP_Checkout_Points {
 		self::$rendered = true;
 	}
 
+	/**
+	 * AJAX handler: return the current max discount and max points for the user's cart.
+	 *
+	 * @return void Terminates with wp_send_json_success() or wp_send_json_error().
+	 */
 	public static function ajax_get_pts_limits() {
 		if ( ! is_user_logged_in() ) {
 			wp_send_json_error( array(), 401 );
@@ -1372,6 +1718,14 @@ class SMP_Checkout_Points {
 		);
 	}
 
+	/**
+	 * AJAX handler: store the chosen points amount in the WooCommerce session.
+	 *
+	 * Validates against the user's live balance and the configured maximum
+	 * discount before committing the value to the session.
+	 *
+	 * @return void Terminates with wp_send_json_success() or wp_send_json_error().
+	 */
 	public static function ajax_apply_pts_discount() {
 		if ( ! is_user_logged_in() ) {
 			wp_send_json_error( array( 'msg' => 'Authentication required.' ), 401 );
@@ -1412,6 +1766,11 @@ class SMP_Checkout_Points {
 		);
 	}
 
+	/**
+	 * AJAX handler: remove any pending points discount from the WooCommerce session.
+	 *
+	 * @return void Terminates with wp_send_json_success() or wp_send_json_error().
+	 */
 	public static function ajax_clear_pts_discount() {
 		if ( ! is_user_logged_in() ) {
 			wp_send_json_error( array( 'msg' => 'Authentication required.' ), 401 );
@@ -1422,6 +1781,14 @@ class SMP_Checkout_Points {
 		wp_send_json_success();
 	}
 
+	/**
+	 * Apply the points discount as a negative WooCommerce cart fee.
+	 *
+	 * Hooked to woocommerce_cart_calculate_fees. Re-validates the session values
+	 * against the live DB balance before calling WC_Cart::add_fee().
+	 *
+	 * @return void
+	 */
 	public static function cart_calculate_fees() {
 		if ( is_admin() && ! defined( 'DOING_AJAX' ) ) {
 			return;
@@ -1454,6 +1821,16 @@ class SMP_Checkout_Points {
 		WC()->cart->add_fee( 'Points Discount (' . $pts_used . ' pts)', -$discount, false );
 	}
 
+	/**
+	 * Deduct redeemed points when a checkout order is successfully placed.
+	 *
+	 * A meta guard prevents double-deduction. Throws a WooCommerce checkout
+	 * exception on failure, which cancels the order and shows an error to the
+	 * customer.
+	 *
+	 * @param int $order_id Newly created WooCommerce order ID.
+	 * @return void
+	 */
 	public static function checkout_order_processed( $order_id ) {
 		$pts_used = (int) WC()->session->get( 'smp_pts_used' );
 		if ( $pts_used <= 0 ) {
@@ -1488,6 +1865,17 @@ class SMP_Checkout_Points {
 		WC()->session->set( 'smp_pts_used', null );
 	}
 
+	/**
+	 * Refund redeemed points when an order is cancelled or refunded.
+	 *
+	 * Hooked to woocommerce_order_status_changed. Delegates to
+	 * SMP_Points_Engine::refund_points_for_order(), which is idempotent.
+	 *
+	 * @param int    $order_id   WooCommerce order ID.
+	 * @param string $old_status Previous order status slug (without wc- prefix).
+	 * @param string $new_status New order status slug (without wc- prefix).
+	 * @return void
+	 */
 	public static function order_status_changed( $order_id, $old_status, $new_status ) {
 		if ( ! in_array( $new_status, array( 'cancelled', 'refunded' ), true ) ) {
 			return;
@@ -1505,13 +1893,32 @@ class SMP_Checkout_Points {
 	[order_lookup] tabbed dashboard and [smp_auth] login/register form.
 	========================================================================== */
 
+/**
+ * Plugin shortcodes.
+ *
+ * Registers [order_lookup] — a tabbed order-dashboard and member-card widget —
+ * and [smp_auth] — a WooCommerce login/register form with a logged-in state.
+ */
 class SMP_Shortcodes {
 
+	/**
+	 * Register plugin shortcodes with WordPress.
+	 *
+	 * @return void
+	 */
 	public static function init() {
 		add_shortcode( 'order_lookup', array( __CLASS__, 'order_lookup' ) );
 		add_shortcode( 'smp_auth', array( __CLASS__, 'smp_auth' ) );
 	}
 
+	/**
+	 * Render the [order_lookup] tabbed order dashboard shortcode.
+	 *
+	 * Displays a member ID card, points balance banner, and a list of recent
+	 * orders with an AJAX-powered details tab. Requires the user to be logged in.
+	 *
+	 * @return string HTML output for the shortcode.
+	 */
 	public static function order_lookup() {
 		if ( ! is_user_logged_in() ) {
 			return '<p>Please log in to view your dashboard.</p>';
@@ -1635,6 +2042,14 @@ endif;
 		return ob_get_clean();
 	}
 
+	/**
+	 * Render the [smp_auth] login/register form shortcode.
+	 *
+	 * Shows a "you are logged in" confirmation card for authenticated users,
+	 * or delegates to the WooCommerce login form template for guests.
+	 *
+	 * @return string HTML output for the shortcode.
+	 */
 	public static function smp_auth() {
 		if ( is_user_logged_in() ) {
 			$user = wp_get_current_user();
@@ -1667,8 +2082,20 @@ endif;
 	Admin menu, CustomerAnalytics page, and Membership Settings page.
 	========================================================================== */
 
+/**
+ * Admin menu, CustomerAnalytics page, and Membership Settings page.
+ *
+ * Registers the top-level "CustomerAnalytics" menu and two submenu pages
+ * (customer list and membership settings), handles settings form submissions
+ * with nonce verification, and renames the WooCommerce fee line label.
+ */
 class SMP_Admin_Pages {
 
+	/**
+	 * Register all WordPress hooks for the admin pages and settings.
+	 *
+	 * @return void
+	 */
 	public static function init() {
 		add_action( 'admin_menu', array( __CLASS__, 'register_menu' ) );
 		add_action( 'admin_init', array( __CLASS__, 'save_pts_settings' ) );
@@ -1678,12 +2105,25 @@ class SMP_Admin_Pages {
 		add_filter( 'woocommerce_get_order_item_totals', array( __CLASS__, 'rename_fees_label' ), 10, 3 );
 	}
 
+	/**
+	 * Register the CustomerAnalytics top-level menu and its submenu pages.
+	 *
+	 * @return void
+	 */
 	public static function register_menu() {
 		add_menu_page( 'CustomerAnalytics', '📊 CustomerAnalytics', 'manage_options', 'smp-customer-analytics', array( __CLASS__, 'render_customers_page' ), 'dashicons-chart-bar', 71 );
 		add_submenu_page( 'smp-customer-analytics', 'Customers', '👥 Customers', 'manage_options', 'smp-customer-analytics', array( __CLASS__, 'render_customers_page' ) );
 		add_submenu_page( 'smp-customer-analytics', 'Membership Settings', '⭐ Memebership', 'manage_options', 'smp-points-settings', array( __CLASS__, 'render_points_settings_page' ) );
 	}
 
+	/**
+	 * Handle the points configuration settings form submission.
+	 *
+	 * Verifies nonce and capability before sanitising and saving the config.
+	 * Redirects back to the settings page on success.
+	 *
+	 * @return void
+	 */
 	public static function save_pts_settings() {
 		if ( ! isset( $_POST['smp_pts_save'] ) || ! current_user_can( 'manage_options' ) || ! check_admin_referer( 'smp_pts_settings_save', 'smp_pts_nonce_field' ) ) {
 			return;
@@ -1700,6 +2140,14 @@ class SMP_Admin_Pages {
 		exit;
 	}
 
+	/**
+	 * Handle the membership-number configuration form submission.
+	 *
+	 * When the prefix changes the sequential counter is reset to zero so that
+	 * new member IDs start from 1 under the new prefix.
+	 *
+	 * @return void
+	 */
 	public static function save_member_num_settings() {
 		if ( ! isset( $_POST['smp_member_num_save'] ) || ! current_user_can( 'manage_options' ) || ! check_admin_referer( 'smp_member_num_settings_save', 'smp_member_num_nonce_field' ) ) {
 			return;
@@ -1723,6 +2171,14 @@ class SMP_Admin_Pages {
 		exit;
 	}
 
+	/**
+	 * Handle the automatic top-up configuration form submission.
+	 *
+	 * Saves the config and calls SMP_Automation::sync_schedule() to reschedule
+	 * or cancel the Action Scheduler job.
+	 *
+	 * @return void
+	 */
 	public static function save_topup_settings() {
 		if ( ! isset( $_POST['smp_topup_save'] ) || ! current_user_can( 'manage_options' ) || ! check_admin_referer( 'smp_topup_settings_save', 'smp_topup_nonce_field' ) ) {
 			return;
@@ -1731,7 +2187,7 @@ class SMP_Admin_Pages {
 		$roles     = array();
 		foreach ( $roles_raw as $slug => $pts ) {
 			$slug = sanitize_key( $slug );
-			if ( $slug !== '' ) {
+			if ( '' !== $slug ) {
 				$roles[ $slug ] = max( 0, intval( $pts ) );
 			}
 		}
@@ -1746,8 +2202,16 @@ class SMP_Admin_Pages {
 		exit;
 	}
 
+	/**
+	 * Handle the "reset to defaults" request for points configuration.
+	 *
+	 * Triggered by a GET request with smp_reset=1 on the settings page.
+	 * Verifies the nonce before deleting the option.
+	 *
+	 * @return void
+	 */
 	public static function reset_pts_settings() {
-		if ( ! isset( $_GET['smp_reset'] ) || ! isset( $_GET['page'] ) || $_GET['page'] !== 'smp-points-settings' || ! current_user_can( 'manage_options' ) || ! check_admin_referer( 'smp_pts_reset' ) ) {
+		if ( ! isset( $_GET['smp_reset'] ) || ! isset( $_GET['page'] ) || 'smp-points-settings' !== $_GET['page'] || ! current_user_can( 'manage_options' ) || ! check_admin_referer( 'smp_pts_reset' ) ) {
 			return;
 		}
 		delete_option( 'smp_pts_config' );
@@ -1755,6 +2219,14 @@ class SMP_Admin_Pages {
 		exit;
 	}
 
+	/**
+	 * Rename the WooCommerce "Fees" line item label to "Bonus Discount:" on orders.
+	 *
+	 * @param array    $total_rows  Associative array of order total row data.
+	 * @param WC_Order $order       The WooCommerce order object.
+	 * @param string   $tax_display Tax display mode (unused).
+	 * @return array Modified total rows.
+	 */
 	public static function rename_fees_label( $total_rows, $order, $tax_display ) {
 		if ( isset( $total_rows['fees'] ) ) {
 			$total_rows['fees']['label'] = __( 'Bonus Discount:', 'woocommerce' );
@@ -1762,6 +2234,14 @@ class SMP_Admin_Pages {
 		return $total_rows;
 	}
 
+	/**
+	 * Render the CustomerAnalytics admin page.
+	 *
+	 * Displays a searchable, paginated table of all WordPress users enriched
+	 * with WooCommerce order statistics. Access restricted to administrators.
+	 *
+	 * @return void
+	 */
 	public static function render_customers_page() {
 		if ( ! current_user_can( 'manage_options' ) ) {
 			wp_die( 'You do not have permission to access this page.' );
@@ -1802,7 +2282,7 @@ class SMP_Admin_Pages {
 			'order'   => $order_dir,
 			'fields'  => 'all',
 		);
-		if ( $search !== '' ) {
+		if ( '' !== $search ) {
 			$user_query_args['search']         = '*' . $search . '*';
 			$user_query_args['search_columns'] = array( 'user_login', 'user_email', 'display_name' ); }
 		$user_query  = new WP_User_Query( $user_query_args );
@@ -1874,7 +2354,7 @@ class SMP_Admin_Pages {
 			<input type="search" name="smp_search" placeholder="Search by name / email / login…" value="<?php echo esc_attr( $search ); ?>">
 			<button type="submit" class="button">🔍 Search</button>
 			<?php
-			if ( $search !== '' ) :
+			if ( '' !== $search ) :
 				?>
 				<a href="<?php echo esc_url( $base_url ); ?>" class="button">✕ Clear</a><?php endif; ?>
 		</form>
@@ -1971,7 +2451,7 @@ class SMP_Admin_Pages {
 						admin_url( 'admin.php' )
 					)
 				);
-				if ( $p === $current_page ) :
+				if ( $current_page === $p ) :
 					?>
 				<span class="current"><?php echo intval( $p ); ?></span>
 			<?php else : ?>
@@ -1986,6 +2466,15 @@ endfor;
 		<?php
 	}
 
+	/**
+	 * Render the Membership Settings admin page.
+	 *
+	 * Provides tabbed configuration panels for points rules, automatic top-up
+	 * schedules, and the membership-number prefix and length.
+	 * Access restricted to administrators.
+	 *
+	 * @return void
+	 */
 	public static function render_points_settings_page() {
 		if ( ! current_user_can( 'manage_options' ) ) {
 			wp_die( 'You do not have permission to access this page.' );
@@ -2054,13 +2543,13 @@ endfor;
 		<?php endif; ?>
 
 		<div class="smp-tabs-nav">
-			<button type="button" class="smp-tab-btn <?php echo $active_tab === 'config' ? 'active' : ''; ?>" data-tab="smp-pane-config">💳 Credit Configuration</button>
-			<button type="button" class="smp-tab-btn <?php echo $active_tab === 'topup' ? 'active' : ''; ?>" data-tab="smp-pane-topup">🔄 Credit Top Up</button>
-			<button type="button" class="smp-tab-btn <?php echo $active_tab === 'member_num' ? 'active' : ''; ?>" data-tab="smp-pane-member-num">🪪 Membership Number</button>
+			<button type="button" class="smp-tab-btn <?php echo 'config' === $active_tab ? 'active' : ''; ?>" data-tab="smp-pane-config">💳 Credit Configuration</button>
+			<button type="button" class="smp-tab-btn <?php echo 'topup' === $active_tab ? 'active' : ''; ?>" data-tab="smp-pane-topup">🔄 Credit Top Up</button>
+			<button type="button" class="smp-tab-btn <?php echo 'member_num' === $active_tab ? 'active' : ''; ?>" data-tab="smp-pane-member-num">🪪 Membership Number</button>
 		</div>
 
 		<!-- TAB 1 — Credit Configuration -->
-		<div id="smp-pane-config" class="smp-tab-pane <?php echo $active_tab === 'config' ? 'active' : ''; ?>">
+		<div id="smp-pane-config" class="smp-tab-pane <?php echo 'config' === $active_tab ? 'active' : ''; ?>">
 			<div class="smp-sc">
 				<h2>📋 Configuration Priority</h2>
 				<div class="smp-source-row">Active source: <?php echo wp_kses_post( $source_html ); ?></div>
@@ -2113,7 +2602,7 @@ endfor;
 		</div>
 
 		<!-- TAB 2 — Credit Top Up -->
-		<div id="smp-pane-topup" class="smp-tab-pane <?php echo $active_tab === 'topup' ? 'active' : ''; ?>">
+		<div id="smp-pane-topup" class="smp-tab-pane <?php echo 'topup' === $active_tab ? 'active' : ''; ?>">
 			<form method="post">
 				<?php wp_nonce_field( 'smp_topup_settings_save', 'smp_topup_nonce_field' ); ?>
 				<div class="smp-sc">
@@ -2153,7 +2642,7 @@ endfor;
 					<?php if ( ! $topup['enabled'] ) : ?>
 						<div class="smp-schedule-banner warn">⚠ Auto top-up is currently <strong>disabled</strong>. Enable it above and save to activate the schedule.</div>
 					<?php elseif ( $next_run_ts ) : ?>
-						<div class="smp-schedule-banner ok">✓ Next scheduled run: <strong><?php echo esc_html( wp_date( 'l, d M Y \a\t H:i', $next_run_ts ) ); ?></strong> &nbsp;·&nbsp; repeats every <?php echo intval( $topup['cycle_weeks'] ); ?> week<?php echo $topup['cycle_weeks'] != 1 ? 's' : ''; ?> on Monday</div>
+						<div class="smp-schedule-banner ok">✓ Next scheduled run: <strong><?php echo esc_html( wp_date( 'l, d M Y \a\t H:i', $next_run_ts ) ); ?></strong> &nbsp;·&nbsp; repeats every <?php echo intval( $topup['cycle_weeks'] ); ?> week<?php echo 1 !== (int) $topup['cycle_weeks'] ? 's' : ''; ?> on Monday</div>
 					<?php else : ?>
 						<div class="smp-schedule-banner warn">⚠ No run scheduled yet. Save settings to register the schedule.</div>
 					<?php endif; ?>
@@ -2168,7 +2657,7 @@ endfor;
 		</div>
 
 		<!-- TAB 3 — Membership Number -->
-		<div id="smp-pane-member-num" class="smp-tab-pane <?php echo $active_tab === 'member_num' ? 'active' : ''; ?>">
+		<div id="smp-pane-member-num" class="smp-tab-pane <?php echo 'member_num' === $active_tab ? 'active' : ''; ?>">
 			<form method="post">
 				<?php wp_nonce_field( 'smp_member_num_settings_save', 'smp_member_num_nonce_field' ); ?>
 				<div class="smp-sc" style="margin-top:18px;">
@@ -2206,10 +2695,27 @@ endfor;
 	Action Scheduler top-up tasks (dispatch, execute, AJAX run-now).
 	========================================================================== */
 
+/**
+ * Action Scheduler-based automatic points top-up engine.
+ *
+ * Dispatches async per-user recharge jobs on a configurable weekly cycle,
+ * executes the recharge logic (adds points by role, logs, and e-mails the
+ * user), and provides an admin AJAX endpoint for an immediate manual run.
+ */
 class SMP_Automation {
 
+	/**
+	 * Cached top-up configuration array.
+	 *
+	 * @var array|null
+	 */
 	private static $config_cache = null;
 
+	/**
+	 * Register Action Scheduler and AJAX hooks for the top-up engine.
+	 *
+	 * @return void
+	 */
 	public static function init() {
 		add_action( 'smp_topup_dispatch_hook', array( __CLASS__, 'dispatch_customer_recharges' ) );
 		add_action( 'smp_monthly_main_dispatch_hook', array( __CLASS__, 'dispatch_customer_recharges' ) );
@@ -2223,8 +2729,13 @@ class SMP_Automation {
 		);
 	}
 
+	/**
+	 * Return the validated top-up configuration with in-memory caching.
+	 *
+	 * @return array{enabled: int, cycle_weeks: int, roles: array<string, int>}
+	 */
 	public static function get_config() {
-		if ( self::$config_cache !== null ) {
+		if ( null !== self::$config_cache ) {
 			return self::$config_cache;
 		}
 		$defaults           = array(
@@ -2240,10 +2751,24 @@ class SMP_Automation {
 		return self::$config_cache;
 	}
 
+	/**
+	 * Calculate the Unix timestamp for next Monday at 00:05:00 (site time).
+	 *
+	 * @return int Unix timestamp.
+	 */
 	public static function next_run_timestamp() {
 		return (int) strtotime( 'next monday 00:05:00', current_time( 'timestamp' ) );
 	}
 
+	/**
+	 * Reschedule (or cancel) the top-up Action Scheduler job to match the current config.
+	 *
+	 * Unschedules all existing smp_topup_dispatch_hook actions, then re-schedules
+	 * one for the next Monday if the top-up is enabled.
+	 *
+	 * @param array|null $config Configuration array; defaults to self::get_config().
+	 * @return void
+	 */
 	public static function sync_schedule( $config = null ) {
 		if ( ! function_exists( 'as_unschedule_all_actions' ) ) {
 			return;
@@ -2261,6 +2786,13 @@ class SMP_Automation {
 		}
 	}
 
+	/**
+	 * Schedule the top-up Action Scheduler job on plugin activation.
+	 *
+	 * A no-op when the top-up is disabled or a job is already queued.
+	 *
+	 * @return void
+	 */
 	public static function on_activation() {
 		if ( ! function_exists( 'as_next_scheduled_action' ) ) {
 			return;
@@ -2271,6 +2803,11 @@ class SMP_Automation {
 		}
 	}
 
+	/**
+	 * Unschedule all top-up Action Scheduler jobs on plugin deactivation.
+	 *
+	 * @return void
+	 */
 	public static function on_deactivation() {
 		if ( function_exists( 'as_unschedule_all_actions' ) ) {
 			as_unschedule_all_actions( 'smp_topup_dispatch_hook' );
@@ -2279,6 +2816,14 @@ class SMP_Automation {
 		}
 	}
 
+	/**
+	 * Dispatch one async recharge job per qualifying user via Action Scheduler.
+	 *
+	 * Called by the smp_topup_dispatch_hook scheduled action. After dispatching,
+	 * re-schedules the next run based on the configured cycle length.
+	 *
+	 * @return void
+	 */
 	public static function dispatch_customer_recharges() {
 		if ( ! function_exists( 'as_enqueue_async_action' ) ) {
 			return;
@@ -2309,6 +2854,15 @@ class SMP_Automation {
 		}
 	}
 
+	/**
+	 * Execute the top-up recharge for a single user.
+	 *
+	 * Determines the highest points grant across the user's roles, adds the
+	 * points, appends a log entry, and sends a notification e-mail.
+	 *
+	 * @param int $user_id WordPress user ID to recharge.
+	 * @return void
+	 */
 	public static function execute_recharge_logic( $user_id ) {
 		$user_id = (int) $user_id;
 		$user    = get_userdata( $user_id );
@@ -2340,7 +2894,7 @@ class SMP_Automation {
 			)
 		);
 		$cycle_weeks = max( 1, (int) $config['cycle_weeks'] );
-		$cycle_label = $cycle_weeks === 1 ? 'weekly' : 'every ' . $cycle_weeks . ' weeks';
+		$cycle_label = 1 === $cycle_weeks ? 'weekly' : 'every ' . $cycle_weeks . ' weeks';
 		SMP_Points_Engine::append_log( $user_id, 'add', $points_to_add, $new_total, 'Auto top-up (' . $cycle_label . ')', 'system' );
 		$site_name = get_bloginfo( 'name' );
 		$pts_cfg   = SMP_Points_Engine::get_points_config();
@@ -2352,6 +2906,14 @@ class SMP_Automation {
 		wp_mail( $user->user_email, $subject, $message, array( 'Content-Type: text/plain; charset=UTF-8' ) );
 	}
 
+	/**
+	 * AJAX handler: trigger an immediate top-up run for all qualifying users.
+	 *
+	 * Uses Action Scheduler async jobs when available; falls back to synchronous
+	 * execution. Restricted to administrators.
+	 *
+	 * @return void Terminates with wp_send_json_success() or wp_send_json_error().
+	 */
 	public static function ajax_topup_run_now() {
 		if ( ! current_user_can( 'manage_options' ) ) {
 			wp_send_json_error( array( 'msg' => 'Permission denied.' ) );
@@ -2377,12 +2939,12 @@ class SMP_Automation {
 			foreach ( $user_ids as $user_id ) {
 				as_enqueue_async_action( 'smp_as_do_single_recharge', array( 'user_id' => (int) $user_id ), 'smp_recharge_group' );
 				++$count; }
-			$msg = sprintf( 'Dispatched %d async top-up job%s via Action Scheduler.', $count, $count !== 1 ? 's' : '' );
+			$msg = sprintf( 'Dispatched %d async top-up job%s via Action Scheduler.', $count, 1 !== $count ? 's' : '' );
 		} else {
 			foreach ( $user_ids as $user_id ) {
 				self::execute_recharge_logic( (int) $user_id );
 				++$count; }
-			$msg = sprintf( 'Processed %d user%s synchronously.', $count, $count !== 1 ? 's' : '' );
+			$msg = sprintf( 'Processed %d user%s synchronously.', $count, 1 !== $count ? 's' : '' );
 		}
 		wp_send_json_success(
 			array(
@@ -2399,14 +2961,33 @@ class SMP_Automation {
 	Redirect wp-login.php to the WooCommerce My Account page.
 	========================================================================== */
 
+/**
+ * Redirect wp-login.php to the WooCommerce My Account page.
+ *
+ * Intercepts requests to wp-login.php and transparently redirects visitors
+ * to the WooCommerce My Account page, while still allowing logout,
+ * lost-password, and other special actions to pass through.
+ */
 class SMP_Login_Redirect {
 
+	/**
+	 * Register hooks for the wp-login.php redirect and login/register URL filters.
+	 *
+	 * @return void
+	 */
 	public static function init() {
 		add_action( 'init', array( __CLASS__, 'redirect_wp_login' ) );
 		add_filter( 'login_url', array( __CLASS__, 'filter_login_url' ), 100, 2 );
 		add_filter( 'register_url', array( __CLASS__, 'filter_register_url' ), 100 );
 	}
 
+	/**
+	 * Redirect non-admin wp-login.php requests to the WooCommerce My Account page.
+	 *
+	 * Special actions (logout, lostpassword, etc.) are allowed through unchanged.
+	 *
+	 * @return void
+	 */
 	public static function redirect_wp_login() {
 		global $pagenow;
 		$is_login_page = ( 'wp-login.php' === $pagenow )
@@ -2430,6 +3011,16 @@ class SMP_Login_Redirect {
 		exit;
 	}
 
+	/**
+	 * Replace the WordPress login URL with the WooCommerce My Account URL.
+	 *
+	 * Appends a validated redirect parameter when present to preserve the
+	 * post-login destination. Uses wp_validate_redirect() to prevent open redirects.
+	 *
+	 * @param string $login_url The original WordPress login URL.
+	 * @param string $redirect  Optional redirect destination.
+	 * @return string The WooCommerce My Account URL (with optional redirect param).
+	 */
 	public static function filter_login_url( $login_url, $redirect ) {
 		$my_account_url = get_permalink( get_option( 'woocommerce_myaccount_page_id' ) );
 		// Only append redirect if it resolves to a same-site URL to prevent open redirect attacks.
@@ -2439,6 +3030,12 @@ class SMP_Login_Redirect {
 		return $my_account_url;
 	}
 
+	/**
+	 * Replace the WordPress registration URL with the WooCommerce My Account URL.
+	 *
+	 * @param string $register_url The original WordPress registration URL.
+	 * @return string The WooCommerce My Account page URL.
+	 */
 	public static function filter_register_url( $register_url ) {
 		return get_permalink( get_option( 'woocommerce_myaccount_page_id' ) );
 	}
