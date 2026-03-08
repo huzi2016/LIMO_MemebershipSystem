@@ -17,9 +17,7 @@ jobs:
       - name: Install dependencies
         run: composer install --prefer-dist --no-progress
 
-      # 使用点 (.) 扫描当前根目录下所有文件，避免文件夹名称匹配导致的报错
-      #- name: Run PHPCBF (Auto Fix)
-      #  run: ./vendor/bin/phpcbf --standard=phpcs.xml . || true
-
+      # 增加 -vvv 详细模式，强制输出所有检查详情
+      # 使用 --report=full 确保错误列表完整显示
       - name: Run PHPCS
-        run: ./vendor/bin/phpcs --standard=phpcs.xml .
+        run: ./vendor/bin/phpcs --standard=phpcs.xml -vvv --report=full .
