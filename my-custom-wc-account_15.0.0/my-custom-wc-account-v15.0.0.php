@@ -1,8 +1,8 @@
 <?php
 /**
- * Plugin Name: My Custom WC Account Ultimate 14.1.0
+ * Plugin Name: My Custom WC Account Ultimate 15.0.0
  * Description: Tabbed order dashboard with admin-style details, WP User points management field, flexible points redemption at checkout, and CustomerAnalytics admin panel.
- * Version: 14.1.0
+ * Version: 15.0.0
  * Author: Weiwei Chen
  *
  * ─────────────────────────────────────────────────────────────────────────────
@@ -26,6 +26,7 @@
  *  Each class exposes a static init() that registers its hooks; the file
  *  bottom bootstraps everything in one place.
  *
+ *    SMP_Error                — unified JSON error response helper (v14.1+)
  *    SMP_Points_Engine        — core points CRUD (no hooks)
  *    SMP_Member_ID            — membership-number system + hooks
  *    SMP_Admin_Points_Field   — WP admin user-profile points UI
@@ -36,13 +37,30 @@
  *    SMP_Admin_Pages          — CustomerAnalytics + Settings admin pages
  *    SMP_Automation           — Action Scheduler top-up tasks
  *    SMP_Login_Redirect       — wp-login.php → My Account redirect
+ *
+ * ─────────────────────────────────────────────────────────────────────────────
+ * Error handling & security hardening in 14.1.0 → 15.0.0:
+ * ─────────────────────────────────────────────────────────────────────────────
+ *  • SMP_Error class: all AJAX handlers return { success, data: { code, msg } }
+ *    — wp_die() fully replaced; machine-readable error codes for the frontend.
+ *  • add_user_points(): atomic INSERT-or-UPDATE with concurrent-insert guard.
+ *  • deduct_user_points(): $wpdb->last_error checked after every query.
+ *  • refund_points_for_order(): MySQL GET_LOCK advisory lock + try/finally
+ *    prevents double-credit under concurrent webhook / status-change events.
+ *  • ajax_adjust_points(): adj_action strict whitelist before any DB touch;
+ *    add/deduct return values checked; DB errors surfaced as user-visible JSON.
+ *  • ajax_get_admin_details() / ajax_update_status(): nonce failures and
+ *    permission errors return typed JSON instead of wp_die() plain text.
+ *  • JS smpToast(): self-contained toast notifications replace all alert() calls.
+ *  • JS smpViewDetails(): handles JSON envelope; shows inline error card on fail.
+ *  • JS smpErrorMsg(): shared utility extracts error text from any AJAX response.
  */
 
 if ( ! defined( 'ABSPATH' ) ) exit;
 
 define( 'SMP_PLUGIN_URL',  plugin_dir_url( __FILE__ ) );
 define( 'SMP_PLUGIN_PATH', plugin_dir_path( __FILE__ ) );
-define( 'SMP_VERSION',     '14.1.0' );
+define( 'SMP_VERSION',     '15.0.0' );
 
 // Maximum points allowed in a single admin adjustment.
 // Override in wp-config.php:  define( 'SMP_MAX_ADMIN_POINTS_ADJUST', 500_000 );

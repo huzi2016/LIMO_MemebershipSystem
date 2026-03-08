@@ -1,0 +1,161 @@
+/**
+ * smp-frontend.css
+ * Frontend styles for My Custom WC Account
+ * Loaded on: Account page, Checkout page, pages with [order_lookup] or [smp_auth] shortcode
+ */
+
+/* ── Reset WooCommerce account page wrapper ──────────────────────────────── */
+.woocommerce-account .entry-content,
+.woocommerce-account .woocommerce {
+    margin-top: 0 !important;
+    padding-top: 0 !important;
+    box-shadow: none !important;
+    background: transparent !important;
+}
+
+/* ── Main dashboard container ────────────────────────────────────────────── */
+.smp-tab-container {
+    margin: 40px auto !important;
+    max-width: 1200px;
+    position: relative !important;
+    z-index: 10 !important;
+    background: #fff !important;
+    padding: 0 !important;
+    border-radius: 12px;
+    box-shadow: 0 10px 50px rgba(0,0,0,0.1);
+    overflow: hidden;
+    clear: both !important;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+}
+
+/* Prevent theme header from rendering below dashboard */
+header, #masthead, .site-header {
+    position: relative !important;
+    z-index: 999 !important;
+    background: #fff !important;
+    display: block !important;
+}
+
+/* ── Tab navigation ──────────────────────────────────────────────────────── */
+.smp-tab-nav { display: flex; background: #f8f9fa; border-bottom: 1px solid #eee; }
+.smp-tab-link { padding: 18px 30px; cursor: pointer; font-weight: 700; font-size: 14px; color: #666; border-right: 1px solid #eee; transition: 0.2s; }
+.smp-tab-link.active { background: #fff; color: #2271b1; border-bottom: 3px solid #2271b1; }
+.smp-tab-content { padding: 30px; display: none; }
+.smp-tab-content.active { display: block; }
+
+/* ── Order detail grid ───────────────────────────────────────────────────── */
+.smp-admin-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 30px; margin-bottom: 30px; }
+.smp-section-title { font-size: 14px; font-weight: 700; color: #1d2327; margin-bottom: 15px; border-bottom: 1px solid #f0f0f0; padding-bottom: 8px; }
+.smp-label { display: block; font-size: 12px; color: #888; margin-bottom: 4px; }
+.smp-value-box { background: #f9f9f9; border: 1px solid #ddd; padding: 8px; border-radius: 4px; width: 100%; font-size: 14px; margin-bottom: 15px; }
+
+/* ── Order status badges ─────────────────────────────────────────────────── */
+.smp-badge { padding: 5px 10px; border-radius: 4px; font-size: 11px; font-weight: 800; text-transform: uppercase; }
+.badge-completed  { background: #e6fffa; color: #047481; }
+.badge-processing { background: #fffbeb; color: #92400e; }
+.badge-on-hold    { background: #dbeafe; color: #1e40af; }
+.badge-cancelled  { background: #fee2e2; color: #991b1b; }
+.badge-pending    { background: #f3f4f6; color: #374151; }
+
+/* ── Checkout points redemption panel ───────────────────────────────────── */
+.smp-points-box {
+    background: linear-gradient(135deg, #eff6ff 0%, #f0fdf4 100%);
+    border: 1.5px solid #2271b1;
+    border-radius: 10px;
+    padding: 20px 28px;
+    margin: 0 20px 24px;
+    box-sizing: border-box;
+}
+.smp-points-box h4 { margin: 0 0 8px; color: #1e40af; font-size: 15px; }
+.smp-points-summary { font-size: 13px; color: #444; margin-bottom: 14px; line-height: 1.6; }
+.smp-points-summary strong { color: #1d2327; }
+.smp-points-controls { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+.smp-points-controls input[type="number"] { width: 130px; padding: 9px 12px; border: 1px solid #ccc; border-radius: 6px; font-size: 14px; }
+.smp-pts-btn { padding: 9px 18px; border: none; border-radius: 6px; cursor: pointer; font-weight: 700; font-size: 13px; }
+.smp-pts-apply          { background: #2271b1; color: #fff; }
+.smp-pts-apply:hover    { background: #1a5a9a; }
+.smp-pts-clear          { background: #f3f4f6; color: #666; }
+.smp-pts-clear:hover    { background: #e5e7eb; }
+.smp-pts-msg { margin-top: 10px; font-size: 13px; font-weight: 600; padding: 8px 12px; border-radius: 5px; display: none; }
+.smp-pts-msg.success { background: #16a34a; color: #fff; display: block; }
+.smp-pts-msg.error   { background: #dc2626; color: #fff; display: block; }
+
+/* ── Login / Register tab UI ─────────────────────────────────────────────── */
+#customer_login { max-width: 540px; margin: 40px auto; background: #fff; border-radius: 12px; box-shadow: 0 4px 28px rgba(0,0,0,0.09); overflow: hidden; }
+#customer_login.col2-set { display: block !important; }
+#customer_login .u-column1,
+#customer_login .u-column2 { width: 100% !important; float: none !important; padding: 32px 36px !important; display: none; box-sizing: border-box; }
+#customer_login .u-column1.smp-tab-active,
+#customer_login .u-column2.smp-tab-active { display: block; }
+#customer_login h2 { display: none !important; }
+
+.smp-auth-tabs { display: flex; background: #f8f9fa; border-bottom: 2px solid #e5e7eb; }
+.smp-auth-tab { flex: 1; padding: 16px 10px; border: none; background: transparent; font-size: 15px; font-weight: 700; color: #6b7280; cursor: pointer; transition: color .18s, background .18s; letter-spacing: .01em; }
+.smp-auth-tab:hover { color: #2271b1; background: #eff6ff; }
+.smp-auth-tab.active { color: #2271b1; background: #fff; border-bottom: 3px solid #2271b1; margin-bottom: -2px; }
+
+/* ── Responsive horizontal page margin ──────────────────────────────────── */
+.site-content,
+.content-area,
+#content,
+.col-full,
+.entry-content,
+.woocommerce-page .woocommerce,
+.woocommerce .content-area {
+    padding-left:  clamp(16px, 4vw, 48px) !important;
+    padding-right: clamp(16px, 4vw, 48px) !important;
+    box-sizing: border-box !important;
+}
+
+/* ── Responsive header / hamburger ──────────────────────────────────────── */
+.site-header,
+.site-header .col-full,
+.site-header .header-inner,
+header.site-header { overflow: visible !important; }
+
+@media (max-width: 1024px) {
+    .main-navigation ul li a,
+    .primary-navigation ul li a,
+    .nav-primary ul li a,
+    .site-header nav ul li a,
+    header nav ul li a { padding: 6px 9px !important; font-size: 12.5px !important; white-space: nowrap; }
+    .main-navigation ul,
+    .primary-navigation ul,
+    .nav-primary ul,
+    .site-header nav > ul,
+    header nav > ul { flex-wrap: wrap !important; justify-content: flex-end; }
+}
+
+@media (max-width: 768px) {
+    .smp-hamburger { display: flex !important; flex-direction: column; justify-content: center; gap: 5px; cursor: pointer; background: #fff; border: 1.5px solid #d1d5db; border-radius: 6px; padding: 7px 9px; margin-left: auto; flex-shrink: 0; position: relative; z-index: 1100; }
+    .smp-hamburger span { display: block; width: 20px; height: 2px; background: #374151; border-radius: 2px; transition: transform .22s ease, opacity .22s ease; }
+    .smp-hamburger.is-open span:nth-child(1) { transform: rotate(45deg) translate(4px, 5px); }
+    .smp-hamburger.is-open span:nth-child(2) { opacity: 0; transform: scaleX(0); }
+    .smp-hamburger.is-open span:nth-child(3) { transform: rotate(-45deg) translate(4px, -5px); }
+
+    .main-navigation ul, .primary-navigation ul, .nav-primary ul,
+    .site-header nav > ul, header nav > ul {
+        display: none !important; flex-direction: column !important; flex-wrap: nowrap !important;
+        width: 100% !important; background: #fff; border-top: 2px solid #e5e7eb;
+        padding: 6px 0 10px !important; margin: 0 !important;
+        box-shadow: 0 6px 16px rgba(0,0,0,.1); position: relative; z-index: 1050;
+    }
+    .main-navigation ul.smp-nav-open, .primary-navigation ul.smp-nav-open,
+    .nav-primary ul.smp-nav-open, .site-header nav > ul.smp-nav-open,
+    header nav > ul.smp-nav-open { display: flex !important; }
+
+    .main-navigation ul li, .primary-navigation ul li, .nav-primary ul li,
+    .site-header nav ul li, header nav ul li { width: 100% !important; border-bottom: 1px solid #f3f4f6 !important; margin: 0 !important; }
+    .main-navigation ul li a, .primary-navigation ul li a, .nav-primary ul li a,
+    .site-header nav ul li a, header nav ul li a { display: block !important; padding: 11px 20px !important; font-size: 14px !important; white-space: normal !important; }
+
+    .site-header, .site-header .col-full, .site-header .header-inner,
+    header .col-full { display: flex !important; flex-wrap: wrap !important; align-items: center !important; gap: 0 !important; }
+    .main-navigation, .primary-navigation, .nav-primary { width: 100% !important; order: 10; }
+}
+
+@media (min-width: 769px) {
+    .smp-hamburger { display: none !important; }
+    .main-navigation ul, .primary-navigation ul, .nav-primary ul,
+    .site-header nav > ul, header nav > ul { display: flex !important; }
+}

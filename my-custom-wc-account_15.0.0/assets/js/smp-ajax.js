@@ -1,5 +1,5 @@
 /**
- * smp-ajax.js  —  v14.1.0
+ * smp-ajax.js  —  v15.0.0
  * Client-side JavaScript for My Custom WC Account
  *
  * Globals injected by PHP (wp_localize_script or inline):
